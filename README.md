@@ -53,7 +53,6 @@ BackendTTCS/
 │   ├── router/             # API endpoints
 │   └── schemas/            # Dữ liệu Pydantic
 ├── .env                   # Biến môi trường
-├── .env.example           # Ví dụ file .env
 ├── requirements.txt        # Python dependencies
 ├── Dockerfile             # Docker image definition
 ├── docker-compose.yml     # Docker Compose config
@@ -63,8 +62,6 @@ BackendTTCS/
 │   └── script.py.mako     # Migration template
 ├── alembic.ini            # Alembic config file
 ├── migrate.py             # Migration helper script
-├── ALEMBIC_SETUP.md       # Hướng dẫn Alembic (Quick Start)
-├── ALEMBIC_GUIDE.md       # Hướng dẫn Alembic chi tiết
 └── main.py               # FastAPI app entry point
 ```
 
