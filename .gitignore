@@ -53,6 +53,8 @@ build/
 *.egg-info/
 
 # =====================
-# Alembic (nếu dùng)
+# Alembic
 # =====================
-alembic.ini
+# DON'T ignore migration files!
+# alembic/versions/ MUST be committed to Git
+alembic/__pycache__/

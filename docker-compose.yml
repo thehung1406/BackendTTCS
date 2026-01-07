@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -10,6 +12,11 @@ services:
       - "5434:5432"
     networks:
       - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -21,7 +28,19 @@ services:
     ports:
       - "5050:80"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
     networks:
       - backend
 
@@ -30,16 +49,29 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: fastapi_app
+    restart: unless-stopped
     env_file: .env
     ports:
       - "8000:8000"
     volumes:
       - ./app:/app/app
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - backend
-
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:pass123@postgres:5432/BackendTTCS
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 networks:
   backend:
@@ -47,3 +79,4 @@ networks:
 
 volumes:
   pgdata:
+  redisdata:

@@ -1,8 +1,7 @@
-from sqlmodel import SQLModel, Field
-from typing import Optional, Dict
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, Dict, List
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
-
 
 class Theater(SQLModel, table=True):
     __tablename__ = "theaters"
@@ -21,3 +20,7 @@ class Theater(SQLModel, table=True):
         sa_column=Column(JSONB)
     )
     special: Optional[str] = Field(default=None, max_length=50)
+
+    # Relationships
+    cinema_rooms: List["CinemaRoom"] = Relationship(back_populates="theater")
+

@@ -1,5 +1,5 @@
-from sqlmodel import SQLModel, Field
-from typing import Optional
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -18,3 +18,8 @@ class User(SQLModel, table=True):
 
     role: str = Field(default="USER", max_length=20)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationships
+    bookings: List["Booking"] = Relationship(back_populates="user")
+    seat_statuses: List["SeatStatus"] = Relationship(back_populates="hold_user")
+

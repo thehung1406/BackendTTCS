@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field, UniqueConstraint
+from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
 from typing import Optional
 from datetime import datetime
 
@@ -25,3 +25,9 @@ class SeatStatus(SQLModel, table=True):
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationships
+    seat: "Seat" = Relationship(back_populates="seat_statuses")
+    showtime: "Showtime" = Relationship(back_populates="seat_statuses")
+    hold_user: Optional["User"] = Relationship(back_populates="seat_statuses")
+

@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional
 
 
@@ -11,3 +11,8 @@ class BookingDetail(SQLModel, table=True):
     seat_id: int = Field(foreign_key="seats.id", index=True)
 
     price: float
+
+    # Relationships
+    booking: "Booking" = Relationship(back_populates="booked_seats")
+    seat: "Seat" = Relationship(back_populates="booking_details")
+

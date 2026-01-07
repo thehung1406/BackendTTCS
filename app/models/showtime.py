@@ -1,5 +1,5 @@
-from sqlmodel import SQLModel, Field
-from typing import Optional
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, List
 from datetime import date, time
 
 
@@ -17,3 +17,10 @@ class Showtime(SQLModel, table=True):
 
     format: str = Field(max_length=20)
     status: str = Field(default="ACTIVE", max_length=20)
+
+    # Relationships
+    film: "Film" = Relationship(back_populates="showtimes")
+    room: "CinemaRoom" = Relationship(back_populates="showtimes")
+    bookings: List["Booking"] = Relationship(back_populates="showtime")
+    seat_statuses: List["SeatStatus"] = Relationship(back_populates="showtime")
+

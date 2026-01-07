@@ -1,5 +1,5 @@
-from sqlmodel import SQLModel, Field
-from typing import Optional, Dict
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, Dict, List
 from datetime import date
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
@@ -28,4 +28,7 @@ class Film(SQLModel, table=True):
 
     description: Optional[str] = None
     trailer: Optional[str] = Field(default=None, max_length=255)
-    status: str = Field(default="ACTIVE", max_length=20)
+
+    # Relationships
+    showtimes: List["Showtime"] = Relationship(back_populates="film")
+

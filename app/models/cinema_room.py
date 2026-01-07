@@ -1,5 +1,6 @@
-from sqlmodel import SQLModel, Field
-from typing import Optional
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, List
+
 
 
 class CinemaRoom(SQLModel, table=True):
@@ -11,3 +12,9 @@ class CinemaRoom(SQLModel, table=True):
     name: str = Field(max_length=50)
     capacity: int
     room_type: Optional[str] = Field(default=None, max_length=50)
+
+    # Relationships
+    theater: "Theater" = Relationship(back_populates="cinema_rooms")
+    showtimes: List["Showtime"] = Relationship(back_populates="room")
+    seats: List["Seat"] = Relationship(back_populates="room")
+

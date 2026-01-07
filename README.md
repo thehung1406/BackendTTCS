@@ -46,38 +46,26 @@ BackendTTCS/
 ├── app/
 │   ├── core/
 │   │   ├── config.py       # Settings từ .env
-│   │   └── database.py     # Database connection & init
-│   ├── models/             # SQLModel definitions
-│   ├── repositories/       # Data access layer
-│   ├── services/           # Business logic
+│   │   └── database.py     # Kết nối DB
+│   ├── models/             # Đinh nghĩa ORM models
+│   ├── repositories/       # Tầng truy cập dữ liệu với DB
+│   ├── services/           # Xử lý logic nghiệp vụ
 │   ├── router/             # API endpoints
-│   └── schemas/            # Request/Response schemas
+│   └── schemas/            # Dữ liệu Pydantic
+├── .env                   # Biến môi trường
+├── .env.example           # Ví dụ file .env
 ├── requirements.txt        # Python dependencies
 ├── Dockerfile             # Docker image definition
 ├── docker-compose.yml     # Docker Compose config
+├── alembic/               # Database migrations
+│   ├── versions/          # Migration files
+│   ├── env.py             # Alembic configuration
+│   └── script.py.mako     # Migration template
+├── alembic.ini            # Alembic config file
+├── migrate.py             # Migration helper script
+├── ALEMBIC_SETUP.md       # Hướng dẫn Alembic (Quick Start)
+├── ALEMBIC_GUIDE.md       # Hướng dẫn Alembic chi tiết
 └── main.py               # FastAPI app entry point
 ```
 
-## Database
-
-Database được tạo tự động khi container khởi động:
-1. PostgreSQL container tạo database từ `POSTGRES_DB` env
-2. FastAPI app gọi `init_db()` để tạo tables từ models
-3. SQLAlchemy sử dụng SQLModel metadata để tạo schema
-
-## Troubleshooting
-
-### Database không tạo
-- Kiểm tra logs: `docker-compose logs postgres`
-- Đảm bảo `.env` file có `DATABASE_URL` đúng
-- Xóa volume cũ: `docker-compose down -v`
-
-### API không khởi động
-- Kiểm tra logs: `docker-compose logs api`
-- Đảm bảo PostgreSQL khối động trước (health check)
-- Xem `main.py` retry logic
-
-### Port conflict
-- Thay đổi port trong `docker-compose.yml`
-- Ví dụ: `8001:8000` thay vì `8000:8000`
 
