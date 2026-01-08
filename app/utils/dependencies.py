@@ -6,8 +6,10 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.core.redis import redis_client
 from app.core.database import get_session
+from app.models import User
 from app.services.auth_service import AuthService
 from app.repositories.auth_repo import AuthRepository
+from app.utils.enum import UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -50,5 +52,10 @@ def get_current_user(
             detail="User not found"
         )
 
+    return user
+
+def require_staff(user: User = Depends(get_current_user)):
+    if user.role not in (UserRole.STAFF, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Staff only")
     return user
 

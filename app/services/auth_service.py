@@ -41,7 +41,7 @@ class AuthService:
         return AuthRepository.create_user(session, new_user)
 
     @staticmethod
-    def login(session: Session,username: str,password: str):
+    def login(session: Session, username: str, password: str):
         user = AuthRepository.get_user_by_username(session, username)
         if not user or not verify_password(password, user.password):
             raise HTTPException(
@@ -59,18 +59,7 @@ class AuthService:
             60 * 60 * 24 * 30,
             refresh_token
         )
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role,
-                "phone": user.phone
-            }
-        }
+        return access_token, refresh_token
 
     @staticmethod
     def refresh_token(refresh_token: str) -> str:

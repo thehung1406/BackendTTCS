@@ -1,9 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 
-from app.utils.enum import UserRole
-
-
 class RegisterRequest(BaseModel):
     username: str
     password: str
@@ -26,3 +23,10 @@ class UserRead(BaseModel):
     full_name: str
     phone: Optional[str]
     role: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
