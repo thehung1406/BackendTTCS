@@ -9,6 +9,7 @@ import logging
 from app.core.redis import redis_client
 from app.router.auth import router as auth_router
 from app.router.cinema_room import router as cinema_room_router
+from app.router.theater import router as theater_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -44,5 +45,6 @@ def redis_test():
 
 app.include_router(auth_router)
 app.include_router(cinema_room_router)
+app.include_router(theater_router)
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
