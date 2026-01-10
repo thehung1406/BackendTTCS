@@ -5,6 +5,12 @@ from app.models.cinema_room import CinemaRoom
 
 
 class ShowtimeRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_by_id(self, showtime_id: int):
+        """Lấy showtime theo ID"""
+        return self.db.get(Showtime, showtime_id)
 
     @staticmethod
     def get_showtimes_by_film_theater_date(

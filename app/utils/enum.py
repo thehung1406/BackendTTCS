@@ -6,8 +6,7 @@ class UserRole(str, Enum):
     USER = "user"
     ADMIN = "admin"
 
-class BookingStatus(str, Enum):
-    PENDING = "pending"
-    PAID = "paid"
-    CANCELLED = "cancelled"
-    EXPIRED = "expired"
+class SeatStatusEnum(str, Enum):
+    AVAILABLE = "AVAILABLE"
+    HOLD = "HOLD"
+    BOOKED = "BOOKED"
