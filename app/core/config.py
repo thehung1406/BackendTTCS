@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     HASH_SECRET : str
     TMN_CODE : str
     VNPAY_URL : str
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM: str | None = None
+    SMTP_TLS: bool = True
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     CORS_ORIGINS: str

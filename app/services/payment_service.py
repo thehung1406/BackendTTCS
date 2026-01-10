@@ -7,6 +7,7 @@ from app.repositories.booking_repo import BookingRepository
 from app.repositories.seat_repo import SeatRepository
 from app.models.booking_detail import BookingDetail
 from sqlmodel import select
+from app.worker.tasks import send_payment_success_email_task
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,13 @@ class PaymentService:
                 
                 # Lấy thông tin chi tiết booking
                 booking_detail = BookingRepository.get_booking_with_details(db=db, booking_id=booking_id)
+
+                # Gửi email xác nhận (chạy nền qua Celery)
+                if booking_detail and booking_detail.get("email"):
+                    send_payment_success_email_task.delay(
+                        to_email=booking_detail.get("email"),
+                        booking_detail=booking_detail
+                    )
                 
                 return {
                     "status": "success",
