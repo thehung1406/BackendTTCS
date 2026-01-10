@@ -13,6 +13,8 @@ from app.router.theater import router as theater_router
 from app.router.film import router as film_router
 from app.router.showtime import router as showtime_router
 from app.router.seat import router as seat_router
+from app.router.booking import router as booking_router
+from app.router.payment import router as payment_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -52,5 +54,7 @@ app.include_router(theater_router)
 app.include_router(film_router)
 app.include_router(showtime_router)
 app.include_router(seat_router)
+app.include_router(booking_router)
+app.include_router(payment_router)
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

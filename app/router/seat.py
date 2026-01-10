@@ -20,8 +20,7 @@ def get_seats_by_showtime(
     showtime_id: int,
     db: Session = Depends(get_session)
 ):
-    seat_service = SeatService(db)
-    return seat_service.get_seats_by_showtime(showtime_id)
+    return SeatService.get_seats_by_showtime(db=db, showtime_id=showtime_id)
 
 
 @router.post("/hold", response_model=List[HoldSeatResponse], status_code=status.HTTP_200_OK)
@@ -35,8 +34,8 @@ def hold_seats(
     Thời gian lock 10 phút khớp với thời gian cho phép thanh toán booking.
     Redis TTL tự động xóa lock sau 10 phút nếu không thanh toán.
     """
-    seat_service = SeatService(db)
-    return seat_service.hold_seats(
+    return SeatService.hold_seats(
+        db=db,
         showtime_id=request.showtime_id,
         seat_ids=request.seat_ids,
         user_id=current_user.id,
@@ -54,8 +53,8 @@ def release_seats(
     Hủy giữ ghế
     Xóa lock ghế trong Redis
     """
-    seat_service = SeatService(db)
-    return seat_service.release_seats(
+    return SeatService.release_seats(
+        db=db,
         showtime_id=request.showtime_id,
         seat_ids=request.seat_ids,
         user_id=current_user.id
@@ -70,8 +69,7 @@ def get_available_seats_count(
     """
     Đếm số ghế còn trống cho suất chiếu
     """
-    seat_service = SeatService(db)
-    count = seat_service.get_available_seats_count(showtime_id)
+    count = SeatService.get_available_seats_count(db=db, showtime_id=showtime_id)
     return {
         "showtime_id": showtime_id,
         "available_seats": count
@@ -87,8 +85,7 @@ def cancel_hold_for_user(
     """
     Hủy tất cả ghế đang hold của user trong suất chiếu
     """
-    seat_service = SeatService(db)
-    count = seat_service.cancel_hold_for_user(showtime_id, current_user.id)
+    count = SeatService.cancel_hold_for_user(db=db, showtime_id=showtime_id, user_id=current_user.id)
     return {
         "showtime_id": showtime_id,
         "cancelled_seats": count,

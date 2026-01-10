@@ -12,18 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class SeatService:
-    def __init__(self, db: Session):
-        self.db = db
-        self.seat_repo = SeatRepository(db)
-        self.showtime_repo = ShowtimeRepository(db)
     
-    def get_seats_by_showtime(self, showtime_id: int) -> List[Dict]:
+    @staticmethod
+    def get_seats_by_showtime(db: Session, showtime_id: int) -> List[Dict]:
         """
         Lấy danh sách ghế và trạng thái theo suất chiếu
         Kết hợp: DB (ghế đã BOOKED) + Redis (ghế đang HOLD)
         """
         # Kiểm tra showtime có tồn tại không
-        showtime = self.showtime_repo.get_by_id(showtime_id)
+        showtime = ShowtimeRepository.get_showtime_by_id(db=db, showtime_id=showtime_id)
         
         if not showtime:
             raise HTTPException(
@@ -32,7 +29,7 @@ class SeatService:
             )
         
         # Lấy tất cả ghế trong phòng
-        seats = self.seat_repo.get_seats_by_room(showtime.room_id)
+        seats = SeatRepository.get_seats_by_room(db=db, room_id=showtime.room_id)
         
         if not seats:
             raise HTTPException(
@@ -41,7 +38,7 @@ class SeatService:
             )
         
         # Lấy ghế đã BOOKED từ DB
-        booked_seats = self.seat_repo.get_seats_status_by_showtime(showtime_id)
+        booked_seats = SeatRepository.get_seats_status_by_showtime(db=db, showtime_id=showtime_id)
         booked_map = {ss.seat_id: ss for ss in booked_seats if ss.status == SeatStatusEnum.BOOKED}
         
         # Lấy ghế đang HOLD từ Redis
@@ -96,8 +93,9 @@ class SeatService:
         
         return result
     
+    @staticmethod
     def hold_seats(
-        self, 
+        db: Session,
         showtime_id: int, 
         seat_ids: List[int], 
         user_id: int,
@@ -108,7 +106,7 @@ class SeatService:
         TTL tự động expire sau 10 phút (khớp với thời gian thanh toán booking)
         """
         # Kiểm tra showtime
-        showtime = self.showtime_repo.get_by_id(showtime_id)
+        showtime = ShowtimeRepository.get_showtime_by_id(db=db, showtime_id=showtime_id)
         if not showtime:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -120,7 +118,7 @@ class SeatService:
         
         for seat_id in seat_ids:
             # Kiểm tra ghế có tồn tại không
-            seat = self.seat_repo.get_seat_by_id(seat_id)
+            seat = SeatRepository.get_seat_by_id(db=db, seat_id=seat_id)
             if not seat:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -128,7 +126,7 @@ class SeatService:
                 )
             
             # Kiểm tra ghế đã BOOKED trong DB chưa
-            seat_status = self.seat_repo.get_seat_status(showtime_id, seat_id)
+            seat_status = SeatRepository.get_seat_status(db=db, showtime_id=showtime_id, seat_id=seat_id)
             if seat_status and seat_status.status == SeatStatusEnum.BOOKED:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -174,8 +172,9 @@ class SeatService:
         
         return results
     
+    @staticmethod
     def release_seats(
-        self, 
+        db: Session,
         showtime_id: int, 
         seat_ids: List[int], 
         user_id: int
@@ -208,12 +207,13 @@ class SeatService:
             "failed_seats": failed_seats
         }
     
-    def get_available_seats_count(self, showtime_id: int) -> int:
+    @staticmethod
+    def get_available_seats_count(db: Session, showtime_id: int) -> int:
         """
         Đếm số ghế còn trống
         = Tổng ghế - Ghế BOOKED (DB) - Ghế HOLD (Redis)
         """
-        showtime = self.showtime_repo.get_by_id(showtime_id)
+        showtime = ShowtimeRepository.get_showtime_by_id(db=db, showtime_id=showtime_id)
         if not showtime:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -221,10 +221,10 @@ class SeatService:
             )
         
         # Tổng số ghế trong phòng
-        total_seats = len(self.seat_repo.get_seats_by_room(showtime.room_id))
+        total_seats = len(SeatRepository.get_seats_by_room(db=db, room_id=showtime.room_id))
         
         # Số ghế đã BOOKED trong DB
-        booked_seats = self.seat_repo.get_seats_status_by_showtime(showtime_id)
+        booked_seats = SeatRepository.get_seats_status_by_showtime(db=db, showtime_id=showtime_id)
         booked_count = len([s for s in booked_seats if s.status == SeatStatusEnum.BOOKED])
         
         # Số ghế đang HOLD trong Redis
@@ -234,8 +234,9 @@ class SeatService:
         available = total_seats - booked_count - hold_count
         return max(0, available)  # Không cho số âm
     
+    @staticmethod
     def book_seats_after_payment(
-        self,
+        db: Session,
         showtime_id: int,
         seat_ids: List[int],
         user_id: int,
@@ -273,7 +274,7 @@ class SeatService:
                     )
                 
                 # Lưu vào DB với status BOOKED
-                self.seat_repo.book_seat(showtime_id, seat_id)
+                SeatRepository.book_seat(db=db, showtime_id=showtime_id, seat_id=seat_id)
                 
                 # Xóa lock khỏi Redis
                 SeatLockManager.unlock_seat(showtime_id, seat_id, user_id)
@@ -289,7 +290,8 @@ class SeatService:
                 SeatLockManager.unlock_seat(showtime_id, seat_id, user_id)
             raise
     
-    def cancel_hold_for_user(self, showtime_id: int, user_id: int) -> int:
+    @staticmethod
+    def cancel_hold_for_user(db: Session, showtime_id: int, user_id: int) -> int:
         """
         Hủy tất cả ghế đang hold của user trong suất chiếu
         Dùng khi user timeout hoặc hủy booking
