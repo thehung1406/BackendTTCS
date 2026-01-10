@@ -55,12 +55,14 @@ class BookingService:
                         detail=f"Ghế {seat_id} không tồn tại"
                     )
                 
-                # Kiểm tra ghế đã được book chưa
+                # Kiểm tra ghế đã được BOOKED chưa (chỉ kiểm tra seat_status)
+                # Redis đã xử lý HOLD rồi, chỉ cần check BOOKED thật sự
                 seat_status = SeatRepository.get_seat_status(
                     db=db,
                     showtime_id=booking_request.showtimeId,
                     seat_id=seat_id
                 )
+                # Chỉ reject nếu ghế đã BOOKED thật sự (đã thanh toán)
                 if seat_status and seat_status.status == SeatStatusEnum.BOOKED:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -93,13 +95,9 @@ class BookingService:
             )
             logger.info(f"Created {len(booking_details)} booking details")
             
-            # 6. Cập nhật seat_status thành BOOKED
-            BookingRepository.update_seat_status_to_booked(
-                db=db,
-                showtime_id=booking_request.showtimeId,
-                seat_ids=seat_ids
-            )
-            logger.info(f"Updated seat status to BOOKED for {len(seat_ids)} seats")
+            # 6. KHÔNG cập nhật seat_status thành BOOKED ngay
+            # Chỉ cập nhật khi thanh toán thành công
+            # Ghế vẫn giữ trạng thái HOLD hoặc sẽ được lock bởi booking này
             
             # 7. Xóa lock Redis (nếu có)
             for seat_id in seat_ids:

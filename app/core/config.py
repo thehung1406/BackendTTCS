@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     REDIS_PORT: int
     REDIS_DB: int
     REDIS_URL: str
+    TMN_CODE: str
+    HASH_SECRET : str
+    TMN_CODE : str
+    VNPAY_URL : str
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     CORS_ORIGINS: str

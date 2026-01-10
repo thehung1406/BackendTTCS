@@ -4,6 +4,9 @@ from fastapi import HTTPException, status
 import logging
 
 from app.repositories.booking_repo import BookingRepository
+from app.repositories.seat_repo import SeatRepository
+from app.models.booking_detail import BookingDetail
+from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +50,22 @@ class PaymentService:
                     booking_id=booking_id,
                     payment_status="PAID"
                 )
+                
+                # ✅ BÂY GIỜ MỚI cập nhật seat_status thành BOOKED
+                # Lấy danh sách seat_id từ booking_details
+                booking_details = db.exec(
+                    select(BookingDetail).where(BookingDetail.booking_id == booking_id)
+                ).all()
+                
+                seat_ids = [detail.seat_id for detail in booking_details]
+                
+                # Cập nhật seat_status thành BOOKED
+                BookingRepository.update_seat_status_to_booked(
+                    db=db,
+                    showtime_id=booking.showtime_id,
+                    seat_ids=seat_ids
+                )
+                logger.info(f"Updated {len(seat_ids)} seats to BOOKED for booking {booking_id}")
                 
                 db.commit()
                 logger.info(f"Updated booking {booking_id} payment status to PAID")

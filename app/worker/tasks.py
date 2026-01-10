@@ -29,7 +29,8 @@ def cleanup_expired_bookings():
     Chạy mỗi 1 phút để:
     - Hủy booking PENDING quá 10 phút chưa thanh toán
     - Cập nhật payment_status thành FAILED
-    - Release ghế BOOKED về AVAILABLE
+    - GIỮ lại booking_details để lịch sử
+    - Không cần xóa seat_status vì chưa được tạo (chỉ tạo khi thanh toán thành công)
     """
     with Session(engine) as session:
         try:
@@ -43,7 +44,6 @@ def cleanup_expired_bookings():
             expired_bookings = session.exec(statement).all()
             
             count = 0
-            released_seats = 0
             
             for booking in expired_bookings:
                 # Cập nhật trạng thái booking
@@ -51,34 +51,12 @@ def cleanup_expired_bookings():
                 booking.payment_status = PaymentStatus.FAILED
                 session.add(booking)
                 
-                # Lấy tất cả seat_id từ booking_details
-                booking_details = session.exec(
-                    select(BookingDetail).where(BookingDetail.booking_id == booking.id)
-                ).all()
-                
-                # Release các ghế về AVAILABLE
-                for detail in booking_details:
-                    # Tìm seat_status tương ứng
-                    seat_status = session.exec(
-                        select(SeatStatus).where(
-                            SeatStatus.seat_id == detail.seat_id,
-                            SeatStatus.showtime_id == booking.showtime_id
-                        )
-                    ).first()
-                    
-                    if seat_status and seat_status.status == SeatStatusEnum.BOOKED:
-                        seat_status.status = SeatStatusEnum.AVAILABLE
-                        seat_status.hold_by_user_id = None
-                        seat_status.hold_expired_at = None
-                        session.add(seat_status)
-                        released_seats += 1
-                
                 count += 1
-                logger.info(f"Expired booking {booking.id}, released {len(booking_details)} seats")
+                logger.info(f"Expired booking {booking.id}")
             
             session.commit()
-            logger.info(f"Cleaned up {count} expired bookings, released {released_seats} seats")
-            return {"expired_bookings": count, "released_seats": released_seats}
+            logger.info(f"Cleaned up {count} expired bookings")
+            return {"expired_bookings": count}
             
         except Exception as e:
             logger.error(f"Error in cleanup_expired_bookings: {str(e)}")

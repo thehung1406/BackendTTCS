@@ -2,6 +2,19 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class VNPayURLRequest(BaseModel):
+    """Request tạo URL thanh toán VNPay"""
+    bookingId: int
+    amount: float
+    orderInfo: str
+    returnUrl: str
+
+
+class VNPayURLResponse(BaseModel):
+    """Response chứa payment URL"""
+    paymentUrl: str
+
+
 class VNPayReturnRequest(BaseModel):
     """Request từ VNPay callback"""
     bookingId: str = Field(..., alias="bookingId")
