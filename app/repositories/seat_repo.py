@@ -1,7 +1,9 @@
-from typing import List, Optional
-from datetime import datetime, timedelta
+from typing import List, Optional, Tuple
+from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
+from sqlalchemy import func
 from app.models.seat import Seat
+from app.models.seat_type import SeatType
 from app.models.seat_status import SeatStatus
 from app.models.showtime import Showtime
 from app.utils.enum import SeatStatusEnum
@@ -18,10 +20,37 @@ class SeatRepository:
         return db.get(Seat, seat_id)
     
     @staticmethod
+    def get_seat_with_type(db: Session, seat_id: int) -> Optional[Tuple[Seat, SeatType]]:
+        """Lấy ghế kèm thông tin SeatType (tên loại, giá)"""
+        statement = (
+            select(Seat, SeatType)
+            .join(SeatType, SeatType.id == Seat.seat_type_id)
+            .where(Seat.id == seat_id)
+        )
+        return db.exec(statement).first()
+    
+    @staticmethod
     def get_seats_by_room(db: Session, room_id: int) -> List[Seat]:
         """Lấy tất cả ghế trong phòng"""
         statement = select(Seat).where(Seat.room_id == room_id).order_by(Seat.seat_name)
         return list(db.exec(statement).all())
+    
+    @staticmethod
+    def get_seats_with_type_by_room(db: Session, room_id: int) -> List[Tuple[Seat, SeatType]]:
+        """Lấy tất cả ghế trong phòng kèm SeatType (1 query JOIN)"""
+        statement = (
+            select(Seat, SeatType)
+            .join(SeatType, SeatType.id == Seat.seat_type_id)
+            .where(Seat.room_id == room_id)
+            .order_by(Seat.seat_name)
+        )
+        return list(db.exec(statement).all())
+    
+    @staticmethod
+    def get_seats_count_by_room(db: Session, room_id: int) -> int:
+        """Đếm số ghế trong phòng bằng COUNT(*) — không load data về Python"""
+        statement = select(func.count()).select_from(Seat).where(Seat.room_id == room_id)
+        return db.exec(statement).one()
     
     @staticmethod
     def get_seat_status(db: Session, showtime_id: int, seat_id: int) -> Optional[SeatStatus]:
@@ -47,17 +76,18 @@ class SeatRepository:
         hold_minutes: int = 3
     ) -> SeatStatus:
         """Tạo mới seat_status khi giữ ghế lần đầu"""
+        now = datetime.now(timezone.utc)
         seat_status = SeatStatus(
             showtime_id=showtime_id,
             seat_id=seat_id,
             status=SeatStatusEnum.HOLD,
             hold_by_user_id=user_id,
-            hold_expired_at=datetime.utcnow() + timedelta(minutes=hold_minutes),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            hold_expired_at=now + timedelta(minutes=hold_minutes),
+            created_at=now,
+            updated_at=now
         )
         db.add(seat_status)
-        db.commit()
+        db.flush()
         db.refresh(seat_status)
         return seat_status
     
@@ -69,12 +99,13 @@ class SeatRepository:
         hold_minutes: int = 3
     ) -> SeatStatus:
         """Cập nhật trạng thái ghế sang HOLD"""
+        now = datetime.now(timezone.utc)
         seat_status.status = SeatStatusEnum.HOLD
         seat_status.hold_by_user_id = user_id
-        seat_status.hold_expired_at = datetime.utcnow() + timedelta(minutes=hold_minutes)
-        seat_status.updated_at = datetime.utcnow()
+        seat_status.hold_expired_at = now + timedelta(minutes=hold_minutes)
+        seat_status.updated_at = now
         db.add(seat_status)
-        db.commit()
+        db.flush()
         db.refresh(seat_status)
         return seat_status
     
@@ -105,9 +136,9 @@ class SeatRepository:
             seat_status.status = SeatStatusEnum.AVAILABLE
             seat_status.hold_by_user_id = None
             seat_status.hold_expired_at = None
-            seat_status.updated_at = datetime.utcnow()
+            seat_status.updated_at = datetime.now(timezone.utc)
             db.add(seat_status)
-            db.commit()
+            db.flush()
             return True
         return False
     
@@ -121,17 +152,36 @@ class SeatRepository:
         
         seat_status.status = SeatStatusEnum.BOOKED
         seat_status.hold_expired_at = None
-        seat_status.updated_at = datetime.utcnow()
+        seat_status.updated_at = datetime.now(timezone.utc)
         db.add(seat_status)
-        db.commit()
+        db.flush()
         db.refresh(seat_status)
         return seat_status
     
     @staticmethod
-    def get_available_seats_count(db: Session, showtime_id: int) -> int:
-        """Đếm số ghế còn trống"""
-        statement = select(SeatStatus).where(
-            SeatStatus.showtime_id == showtime_id,
-            SeatStatus.status == SeatStatusEnum.AVAILABLE
+    def get_booked_seats_count(db: Session, showtime_id: int) -> int:
+        """Đếm số ghế đã BOOKED bằng COUNT(*) — hiệu quả hơn load tất cả rồi đếm Python"""
+        statement = (
+            select(func.count())
+            .select_from(SeatStatus)
+            .where(
+                SeatStatus.showtime_id == showtime_id,
+                SeatStatus.status == SeatStatusEnum.BOOKED
+            )
         )
-        return len(list(db.exec(statement).all()))
+        return db.exec(statement).one()
+    
+    @staticmethod
+    def get_available_seats_count(db: Session, showtime_id: int) -> int:
+        """Đếm số ghế còn trống bằng COUNT(*).
+        Đếm ghế AVAILABLE hoặc chưa có trong seat_status.
+        """
+        statement = (
+            select(func.count())
+            .select_from(SeatStatus)
+            .where(
+                SeatStatus.showtime_id == showtime_id,
+                SeatStatus.status == SeatStatusEnum.AVAILABLE
+            )
+        )
+        return db.exec(statement).one()

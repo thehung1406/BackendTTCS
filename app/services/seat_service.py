@@ -1,5 +1,5 @@
 from typing import List, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlmodel import Session
 from fastapi import HTTPException, status
 from app.repositories.seat_repo import SeatRepository
@@ -18,6 +18,7 @@ class SeatService:
         """
         Lấy danh sách ghế và trạng thái theo suất chiếu
         Kết hợp: DB (ghế đã BOOKED) + Redis (ghế đang HOLD)
+        Giá lấy từ SeatType.base_price thông qua JOIN
         """
         # Kiểm tra showtime có tồn tại không
         showtime = ShowtimeRepository.get_showtime_by_id(db=db, showtime_id=showtime_id)
@@ -28,10 +29,10 @@ class SeatService:
                 detail="Suất chiếu không tồn tại"
             )
         
-        # Lấy tất cả ghế trong phòng
-        seats = SeatRepository.get_seats_by_room(db=db, room_id=showtime.room_id)
+        # Lấy tất cả ghế trong phòng kèm SeatType (1 query JOIN)
+        seat_rows = SeatRepository.get_seats_with_type_by_room(db=db, room_id=showtime.room_id)
         
-        if not seats:
+        if not seat_rows:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Không tìm thấy ghế trong phòng chiếu"
@@ -46,7 +47,7 @@ class SeatService:
         redis_lock_map = {lock["seat_id"]: lock for lock in redis_locks}
         
         result = []
-        for seat in seats:
+        for seat, seat_type in seat_rows:
             # Priority: BOOKED (DB) > HOLD (Redis) > AVAILABLE
             
             # Kiểm tra ghế đã BOOKED trong DB
@@ -54,8 +55,8 @@ class SeatService:
                 result.append({
                     "seat_id": seat.id,
                     "seat_name": seat.seat_name,
-                    "seat_type": seat.seat_type,
-                    "price": float(seat.price),
+                    "seat_type": seat_type.name,
+                    "price": float(seat_type.base_price),
                     "status": SeatStatusEnum.BOOKED,
                     "hold_by_user_id": None,
                     "hold_expired_at": None
@@ -72,8 +73,8 @@ class SeatService:
                 result.append({
                     "seat_id": seat.id,
                     "seat_name": seat.seat_name,
-                    "seat_type": seat.seat_type,
-                    "price": float(seat.price),
+                    "seat_type": seat_type.name,
+                    "price": float(seat_type.base_price),
                     "status": SeatStatusEnum.HOLD,
                     "hold_by_user_id": lock_info["user_id"],
                     "hold_expired_at": hold_expired_at
@@ -84,8 +85,8 @@ class SeatService:
             result.append({
                 "seat_id": seat.id,
                 "seat_name": seat.seat_name,
-                "seat_type": seat.seat_type,
-                "price": float(seat.price),
+                "seat_type": seat_type.name,
+                "price": float(seat_type.base_price),
                 "status": SeatStatusEnum.AVAILABLE,
                 "hold_by_user_id": None,
                 "hold_expired_at": None
@@ -159,7 +160,7 @@ class SeatService:
                 )
             
             # Tính thời gian hết hạn
-            hold_expired_at = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+            hold_expired_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
             
             logger.info(f"User {user_id} locked seat {seat_id} in Redis for {hold_minutes} minutes")
             
@@ -220,12 +221,11 @@ class SeatService:
                 detail="Suất chiếu không tồn tại"
             )
         
-        # Tổng số ghế trong phòng
-        total_seats = len(SeatRepository.get_seats_by_room(db=db, room_id=showtime.room_id))
+        # Tổng số ghế trong phòng (dùng COUNT, không load data)
+        total_seats = SeatRepository.get_seats_count_by_room(db=db, room_id=showtime.room_id)
         
-        # Số ghế đã BOOKED trong DB
-        booked_seats = SeatRepository.get_seats_status_by_showtime(db=db, showtime_id=showtime_id)
-        booked_count = len([s for s in booked_seats if s.status == SeatStatusEnum.BOOKED])
+        # Số ghế đã BOOKED trong DB (dùng COUNT)
+        booked_count = SeatRepository.get_booked_seats_count(db=db, showtime_id=showtime_id)
         
         # Số ghế đang HOLD trong Redis
         redis_locks = SeatLockManager.get_all_locks_for_showtime(showtime_id)

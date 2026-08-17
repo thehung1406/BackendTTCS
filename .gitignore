@@ -58,3 +58,11 @@ build/
 # DON'T ignore migration files!
 # alembic/versions/ MUST be committed to Git
 alembic/__pycache__/
+
+# =====================
+# AI / Agent Skills
+# =====================
+.agents/
+.agent/
+.gemini/
+skills-lock.json

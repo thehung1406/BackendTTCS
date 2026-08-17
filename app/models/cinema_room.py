@@ -17,4 +17,5 @@ class CinemaRoom(SQLModel, table=True):
     theater: "Theater" = Relationship(back_populates="cinema_rooms")
     showtimes: List["Showtime"] = Relationship(back_populates="room")
     seats: List["Seat"] = Relationship(back_populates="room")
+    seat_types: List["SeatType"] = Relationship(back_populates="room")
 

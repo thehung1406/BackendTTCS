@@ -1,7 +1,7 @@
 from typing import List
 from sqlmodel import Session
 from fastapi import HTTPException, status
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.booking import Booking
 from app.repositories.booking_repo import BookingRepository
@@ -73,7 +73,7 @@ class BookingService:
             booking_data = {
                 "user_id": booking_request.userId,
                 "showtime_id": booking_request.showtimeId,
-                "booking_date": datetime.utcnow(),
+                "booking_date": datetime.now(timezone.utc),
                 "total_amount": booking_request.totalAmount,
                 "payment_method": booking_request.paymentMethod,
                 "payment_status": "PENDING",
@@ -160,16 +160,11 @@ class BookingService:
     
     @staticmethod
     def get_user_bookings(db: Session, user_id: int) -> List[BookingDetailResponse]:
-        """Lấy tất cả bookings của user"""
-        bookings = BookingRepository.get_bookings_by_user(db=db, user_id=user_id)
-        
-        result = []
-        for booking in bookings:
-            booking_detail = BookingRepository.get_booking_with_details(db=db, booking_id=booking.id)
-            if booking_detail:
-                result.append(BookingDetailResponse(**booking_detail))
-        
-        return result
+        """Lấy tất cả bookings của user.
+        Dùng batch JOIN query thay vì loop gọi get_booking_with_details.
+        """
+        bookings_data = BookingRepository.get_user_bookings_with_details(db=db, user_id=user_id)
+        return [BookingDetailResponse(**data) for data in bookings_data]
     
     @staticmethod
     def update_payment_status(
